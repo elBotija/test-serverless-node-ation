@@ -42,14 +42,14 @@ jobs:
 
       - name: Run ESLint
         id: lint
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.FAIL_FAST }}
         run: |
           npm run lint-ci
           echo "LINT_STATUS=$?" >> $GITHUB_ENV
 
       - name: Run tests
         id: tests
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.FAIL_FAST }}
         run: |
           npm run test-ci
           echo "TEST_STATUS=$?" >> $GITHUB_ENV
@@ -87,7 +87,7 @@ jobs:
           fi
           
           # Add Coverage results
-          if [ "$COVERAGE" -ge "${{ inputs.COVERAGE_THRESHOLD }}" ]; then
+          if (( $(echo "$COVERAGE >= ${{ inputs.COVERAGE_THRESHOLD }}" | bc -l) )); then
             echo "| Coverage | ✅ | ${COVERAGE}% |" >> summary.txt
             COVERAGE_MESSAGE="✅ Coverage meets threshold"
           else
@@ -143,9 +143,17 @@ jobs:
               body += '\n```\n</details>\n\n';
             }
             
-            // Add test coverage details
+            // Add test output
+if (fs.existsSync('jest-junit.xml')) {
+  body += '<details>\n<summary>Test Results</summary>\n\n```\n';
+  body += fs.readFileSync('jest-junit.xml', 'utf8');
+  body += '\n```\n</details>\n\n';
+}
+
+// Add test coverage details
             body += '<details>\n<summary>Test Coverage Details</summary>\n\n```\n';
-            body += fs.readFileSync('coverage/lcov-report/index.html', 'utf8');
+            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
             body += '\n```\n</details>\n\n';
             
             body += `🕒 Last updated: ${results.test.timestamp}\n`;

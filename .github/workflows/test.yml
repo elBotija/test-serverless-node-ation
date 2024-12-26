@@ -151,8 +151,21 @@ jobs:
             
             // Add detailed logs
             if (fs.existsSync('checkstyle-eslint.xml')) {
-              body += '<details>\n<summary>ESLint Results</summary>\n\n```xml\n';
-              body += fs.readFileSync('checkstyle-eslint.xml', 'utf8');
+              body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
+              const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
+              const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
+
+              let formattedErrors = lintErrors.map(error => {
+                const line = error.match(/line="(\d+)"/)[1];
+                const column = error.match(/column="(\d+)"/)[1];
+                const severity = error.match(/severity="(\w+)"/)[1];
+                const message = error.match(/message="([^"]+)"/)[1];
+                const source = error.match(/source="([^"]+)"/)[1];
+                
+                return `${line}:${column} ${severity} ${message} (${source})`;
+              }).join('\n');
+
+              body += formattedErrors;
               body += '\n```\n</details>\n\n';
             }
             

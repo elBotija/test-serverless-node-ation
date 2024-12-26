@@ -42,7 +42,7 @@ jobs:
 
       - name: Run ESLint
         id: lint
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.FAIL_FAST }}
         run: |
           npm run lint-ci
           LINT_STATUS=$?
@@ -54,7 +54,7 @@ jobs:
 
       - name: Run tests
         id: tests
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.FAIL_FAST }}
         run: |
           npm run test-ci
           TEST_STATUS=$?

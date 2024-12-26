@@ -153,42 +153,36 @@ jobs:
             if (fs.existsSync('checkstyle-eslint.xml')) {
               body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
               const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
-              const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
-              let currentFile = '';
+              
+              // Parse XML to get file nodes
+              const fileMatches = eslintOutput.match(/<file[^>]*>.*?<\/file>/gs) || [];
               let formattedErrors = '';
 
-              lintErrors.forEach(error => {
-                try {
-                  const lineMatch = error.match(/line="(\d+)"/);
-                  const columnMatch = error.match(/column="(\d+)"/);
-                  const severityMatch = error.match(/severity="(\w+)"/);
-                  const messageMatch = error.match(/message="([^"]+)"/);
-                  const sourceMatch = error.match(/source="([^"]+)"/);
-                  const fileMatch = error.match(/file="([^"]+)"/);
-
-                  if (!lineMatch || !columnMatch || !severityMatch || !messageMatch || !sourceMatch || !fileMatch) {
-                    console.log('Skipping malformed error entry:', error);
-                    return;
-                  }
-
-                  const line = lineMatch[1];
-                  const column = columnMatch[1];
-                  const severity = severityMatch[1];
-                  const message = messageMatch[1];
-                  const source = sourceMatch[1];
-                  const file = fileMatch[1];
+              fileMatches.forEach(fileBlock => {
+                const fileNameMatch = fileBlock.match(/name="([^"]+)"/);
+                if (!fileNameMatch) return;
+                
+                const fileName = fileNameMatch[1].split('/').pop(); // Get just the filename
+                const errorMatches = fileBlock.match(/<error[^>]*>/g) || [];
+                
+                if (errorMatches.length > 0) {
+                  formattedErrors += `\n### ${fileName}\n`;
                   
-                  if (file !== currentFile) {
-                    formattedErrors += `\n### ${file}\n`;
-                    currentFile = file;
-                  }
-                  formattedErrors += `${line}:${column} ${severity} ${message} (${source})\n`;
-                } catch (err) {
-                  console.log('Error processing lint error:', err);
+                  errorMatches.forEach(error => {
+                    const line = error.match(/line="(\d+)"/)?.[1];
+                    const column = error.match(/column="(\d+)"/)?.[1];
+                    const severity = error.match(/severity="(\w+)"/)?.[1];
+                    const message = error.match(/message="([^"]+)"/)?.[1];
+                    const source = error.match(/source="([^"]+)"/)?.[1];
+                    
+                    if (line && column && severity && message) {
+                      formattedErrors += `${line}:${column} ${severity} ${message} (${source})\n`;
+                    }
+                  });
                 }
               });
 
-              body += formattedErrors || 'No lint errors found or error processing results';
+              body += formattedErrors || 'No lint errors found';
               body += '\n```\n</details>\n\n';
             }
             

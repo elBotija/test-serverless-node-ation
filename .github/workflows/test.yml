@@ -163,7 +163,7 @@ jobs:
                 const severity = error.match(/severity="(\w+)"/)[1];
                 const message = error.match(/message="([^"]+)"/)[1];
                 const source = error.match(/source="([^"]+)"/)[1];
-                const file = files[index].split('/').pop();
+                const file = files[i].split('/').pop();
                 if (i === 0) {
                   return `### ${file}\n${line}:${column} ${severity} ${message} (${source})`;
                 }

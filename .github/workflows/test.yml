@@ -154,21 +154,23 @@ jobs:
               body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
               const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
               const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
-              const fileMatch = eslintOutput.match(/name="([^"]+)"/g) || [];
-              const files = fileMatch.map(f => f.match(/name="([^"]+)"/)[1]);
+              let currentFile = '';
+              let formattedErrors = '';
 
-              let formattedErrors = lintErrors.map((error, i )=> {
-                const line = error.match(/line="(\d+)"/)[1];
-                const column = error.match(/column="(\d+)"/)[1];
-                const severity = error.match(/severity="(\w+)"/)[1];
-                const message = error.match(/message="([^"]+)"/)[1];
-                const source = error.match(/source="([^"]+)"/)[1];
-                const file = files[i].split('/').pop();
-                if (i === 0) {
-                  return `### ${file}\n${line}:${column} ${severity} ${message} (${source})`;
-                }
-                return `${line}:${column} ${severity} ${message} (${source})`;
-              }).join('\n');
+              lintErrors.forEach(error => {
+                  const line = error.match(/line="(\d+)"/)[1];
+                  const column = error.match(/column="(\d+)"/)[1];
+                  const severity = error.match(/severity="(\w+)"/)[1];
+                  const message = error.match(/message="([^"]+)"/)[1];
+                  const source = error.match(/source="([^"]+)"/)[1];
+                  const file = error.match(/file="([^"]+)"/)[1];
+                  
+                  if (file !== currentFile) {
+                      formattedErrors += `\n### ${file}\n`;
+                      currentFile = file;
+                  }
+                  formattedErrors += `${line}:${column} ${severity} ${message} (${source})\n`;
+              });
 
               body += formattedErrors;
               body += '\n```\n</details>\n\n';

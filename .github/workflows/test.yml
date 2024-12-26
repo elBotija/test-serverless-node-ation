@@ -65,7 +65,8 @@ jobs:
         shell: bash
         run: |
           # Extract coverage from jest-junit report
-          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          # COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
           # Prepare test summary

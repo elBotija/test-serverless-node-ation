@@ -8,7 +8,7 @@ on:
         description: 'Node.js version'
         type: string
       FAIL_FAST:
-        default: true
+        default: false
         description: 'Stop pipeline on test failure'
         required: false
         type: boolean

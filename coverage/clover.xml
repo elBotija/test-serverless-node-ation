@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1735239506476" clover="3.2.0">
+  <project timestamp="1735239506476" name="All files">
+    <metrics statements="13" coveredstatements="9" conditionals="4" coveredconditionals="1" methods="6" coveredmethods="5" elements="23" coveredelements="15" complexity="0" loc="13" ncloc="13" packages="1" files="2" classes="2"/>
+    <file name="calculator.js" path="/Users/mauro/Documents/codigo/test-serverless-action/test-project/src/calculator.js">
+      <metrics statements="7" coveredstatements="6" conditionals="2" coveredconditionals="1" methods="4" coveredmethods="4"/>
+      <line num="1" count="1" type="stmt"/>
+      <line num="2" count="1" type="stmt"/>
+      <line num="3" count="1" type="stmt"/>
+      <line num="4" count="1" type="stmt"/>
+      <line num="5" count="1" type="cond" truecount="1" falsecount="1"/>
+      <line num="6" count="0" type="stmt"/>
+      <line num="8" count="1" type="stmt"/>
+    </file>
+    <file name="willFail.js" path="/Users/mauro/Documents/codigo/test-serverless-action/test-project/src/willFail.js">
+      <metrics statements="6" coveredstatements="3" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="1"/>
+      <line num="1" count="1" type="stmt"/>
+      <line num="2" count="1" type="stmt"/>
+      <line num="5" count="1" type="stmt"/>
+      <line num="6" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="7" count="0" type="stmt"/>
+      <line num="9" count="0" type="stmt"/>
+    </file>
+  </project>
+</coverage>

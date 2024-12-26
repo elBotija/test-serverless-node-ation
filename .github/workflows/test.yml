@@ -45,13 +45,17 @@ jobs:
         continue-on-error: true
         run: |
           npm run lint-ci
-          LINT_STATUS=$?
-          if [ $LINT_STATUS -eq 0 ] || [ -f "checkstyle-eslint.xml" ]; then
-            echo "LINT_STATUS=0" >> $GITHUB_ENV
+          if [ -f "checkstyle-eslint.xml" ]; then
+            ERROR_COUNT=$(grep -c "<error" checkstyle-eslint.xml || true)
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "LINT_STATUS=1" >> $GITHUB_ENV
+              echo "Found $ERROR_COUNT lint errors"
+            else
+              echo "LINT_STATUS=0" >> $GITHUB_ENV
+            fi
           else
-            echo "LINT_STATUS=1" >> $GITHUB_ENV
+            echo "LINT_STATUS=0" >> $GITHUB_ENV
           fi
-
       - name: Run tests
         id: tests
         continue-on-error: true

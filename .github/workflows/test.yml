@@ -156,17 +156,18 @@ jobs:
               const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
 
               let formattedErrors = lintErrors.map(error => {
+                const file = error.match(/name="([^"]+)"/)[1];
                 const line = error.match(/line="(\d+)"/)[1];
                 const column = error.match(/column="(\d+)"/)[1];
                 const severity = error.match(/severity="(\w+)"/)[1];
                 const message = error.match(/message="([^"]+)"/)[1];
                 const source = error.match(/source="([^"]+)"/)[1];
                 
-                return `${line}:${column} ${severity} ${message} (${source})`;
+                return `${file}:${line}:${column} ${severity} ${message} (${source})`;
               }).join('\n');
 
               if (formattedErrors.length > MAX_LINES) {
-                body += `showing first ${MAX_LINES} of ${formattedErrors.length} issues)\n\n```log\n`;
+                body += `showing first ${MAX_LINES} of ${formattedErrors.length} issues)\n\n```\n`;
                 body += formattedErrors.slice(0, MAX_LINES).join('\n');
                 body += `\n\n... and ${formattedErrors.length - MAX_LINES} more issues ...`;
               } else {
@@ -185,6 +186,7 @@ jobs:
             
             // Add test coverage details
             body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
+            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
             const coverage = JSON.parse(coverageDetails);
             const files = Object.keys(coverage);
             if (files.length > MAX_LINES) {

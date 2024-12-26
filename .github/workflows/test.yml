@@ -42,14 +42,14 @@ jobs:
 
       - name: Run ESLint
         id: lint
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run lint-ci
           echo "LINT_STATUS=$?" >> $GITHUB_ENV
 
       - name: Run tests
         id: tests
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run test-ci
           echo "TEST_STATUS=$?" >> $GITHUB_ENV

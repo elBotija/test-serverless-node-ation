@@ -133,73 +133,60 @@ jobs:
           script: |
             const fs = require('fs');
             
+            // Read results file
             let results;
             try {
               results = JSON.parse(fs.readFileSync('.github_testresults', 'utf8'));
+              console.log('Test results loaded:', results);
             } catch (error) {
               console.log('Error reading test results:', error);
               return;
             }
             
-            let body = '# 🔍 Test Results\n\n';
+            // Build comment body
+            let body = `# 🔍 Test Results\n\n`;
+            
+            // Add test results from summary.txt
             body += fs.readFileSync('summary.txt', 'utf8') + '\n\n';
-            const MAX_LINES = 50;
-
+            
+            // Add detailed logs
             if (fs.existsSync('checkstyle-eslint.xml')) {
+              body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
               const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
               const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
-              const fileMatch = eslintOutput.match(/name="([^"]+)"/g) || [];
-              const files = fileMatch.map(f => f.match(/name="([^"]+)"/)[1]);
 
-              const formattedErrors = lintErrors.map((error, index) => {
+              let formattedErrors = lintErrors.map(error => {
                 const line = error.match(/line="(\d+)"/)[1];
                 const column = error.match(/column="(\d+)"/)[1];
                 const severity = error.match(/severity="(\w+)"/)[1];
                 const message = error.match(/message="([^"]+)"/)[1];
                 const source = error.match(/source="([^"]+)"/)[1];
-                const file = files[index].split('/').pop();
                 
-                return `${file}:${line}:${column} ${severity} ${message} (${source})`;
-              });
+                return `${line}:${column} ${severity} ${message} (${source})`;
+              }).join('\n');
 
-              body += '<details>\n<summary>ESLint Results';
-              if (formattedErrors.length > MAX_LINES) {
-                body += ` (showing first ${MAX_LINES} of ${formattedErrors.length} issues)</summary>\n\n```\n`;
-                body += formattedErrors.slice(0, MAX_LINES).join('\n');
-                body += `\n\n... and ${formattedErrors.length - MAX_LINES} more issues ...`;
-              } else {
-                body += ` (${formattedErrors.length} issues)</summary>\n\n```\n`;
-                body += formattedErrors.join('\n');
-              }
+              body += formattedErrors;
               body += '\n```\n</details>\n\n';
             }
             
+            // Add test output
             if (fs.existsSync('jest-junit.xml')) {
-              body += '<details>\n<summary>Test Results</summary>\n\n```\n';
+              body += '<details>\n<summary>Test Results</summary>\n\n```xml\n';
               body += fs.readFileSync('jest-junit.xml', 'utf8');
               body += '\n```\n</details>\n\n';
             }
             
-            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+            // Add test coverage details
             body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
-            const coverage = JSON.parse(coverageDetails);
-            const files = Object.keys(coverage);
-            
-            if (files.length > MAX_LINES) {
-              const truncatedCoverage = {};
-              files.slice(0, MAX_LINES).forEach(file => {
-                truncatedCoverage[file] = coverage[file];
-              });
-              truncatedCoverage['...'] = `${files.length - MAX_LINES} more files truncated`;
-              body += JSON.stringify(truncatedCoverage, null, 2);
-            } else {
-              body += JSON.stringify(coverage, null, 2);
-            }
+            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+            body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
             body += '\n```\n</details>\n\n';
             
             body += `🕒 Last updated: ${results.test.timestamp}\n`;
             body += `🔗 [View Run](${results.test.run_url})`;
             
+            // Find existing bot comment
+            console.log('Searching for existing bot comment...');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -212,7 +199,11 @@ jobs:
               comment.body.includes('Test Results')
             );
             
+            console.log('Bot comment found:', botComment ? botComment.id : 'none');
+            
+            // Update or create comment
             if (botComment) {
+              console.log('Updating existing comment...');
               await github.rest.issues.updateComment({
                 comment_id: botComment.id,
                 owner: context.repo.owner,
@@ -220,6 +211,7 @@ jobs:
                 body: body
               });
             } else {
+              console.log('Creating new comment...');
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,

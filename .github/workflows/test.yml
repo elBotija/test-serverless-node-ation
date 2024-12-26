@@ -148,7 +148,7 @@ jobs:
             
             // Add test results from summary.txt
             body += fs.readFileSync('summary.txt', 'utf8') + '\n\n';
-            
+            const MAX_LINES = 50; // Configurable
             // Add detailed logs
             if (fs.existsSync('checkstyle-eslint.xml')) {
               body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
@@ -165,7 +165,14 @@ jobs:
                 return `${line}:${column} ${severity} ${message} (${source})`;
               }).join('\n');
 
-              body += formattedErrors;
+              if (formattedErrors.length > MAX_LINES) {
+                body += `showing first ${MAX_LINES} of ${formattedErrors.length} issues)\n\n```log\n`;
+                body += formattedErrors.slice(0, MAX_LINES).join('\n');
+                body += `\n\n... and ${formattedErrors.length - MAX_LINES} more issues ...`;
+              } else {
+                body += `${formattedErrors.length} issues)\n\n```log\n`;
+                body += formattedErrors.join('\n');
+              }
               body += '\n```\n</details>\n\n';
             }
             
@@ -178,8 +185,18 @@ jobs:
             
             // Add test coverage details
             body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
-            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
-            body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
+            const coverage = JSON.parse(coverageDetails);
+            const files = Object.keys(coverage);
+            if (files.length > MAX_LINES) {
+              const truncatedCoverage = {};
+              files.slice(0, MAX_LINES).forEach(file => {
+                truncatedCoverage[file] = coverage[file];
+              });
+              truncatedCoverage['...'] = `${files.length - MAX_LINES} more files truncated`;
+              body += JSON.stringify(truncatedCoverage, null, 2);
+            } else {
+              body += JSON.stringify(coverage, null, 2);
+            }
             body += '\n```\n</details>\n\n';
             
             body += `🕒 Last updated: ${results.test.timestamp}\n`;

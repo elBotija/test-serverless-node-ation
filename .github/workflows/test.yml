@@ -126,6 +126,7 @@ jobs:
           }
           EOF
 
+
       - name: Check for test results and comment PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -148,30 +149,34 @@ jobs:
             
             // Add test results from summary.txt
             body += fs.readFileSync('summary.txt', 'utf8') + '\n\n';
-            const MAX_LINES = 50; // Configurable
+            const MAX_LINES = 50;
+
             // Add detailed logs
             if (fs.existsSync('checkstyle-eslint.xml')) {
-              body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
               const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
               const lintErrors = eslintOutput.match(/<error.*?\/>/g) || [];
+              const fileMatch = eslintOutput.match(/name="([^"]+)"/g) || [];
+              const files = fileMatch.map(f => f.match(/name="([^"]+)"/)[1]);
 
-              let formattedErrors = lintErrors.map(error => {
-                const file = error.match(/name="([^"]+)"/)[1];
+              let formattedErrors = lintErrors.map((error, index) => {
                 const line = error.match(/line="(\d+)"/)[1];
                 const column = error.match(/column="(\d+)"/)[1];
                 const severity = error.match(/severity="(\w+)"/)[1];
                 const message = error.match(/message="([^"]+)"/)[1];
                 const source = error.match(/source="([^"]+)"/)[1];
+                const file = files[index].split('/').pop(); // Get just filename
                 
                 return `${file}:${line}:${column} ${severity} ${message} (${source})`;
-              }).join('\n');
+              });
 
+              body += '<details>\n<summary>ESLint Results';
+              
               if (formattedErrors.length > MAX_LINES) {
-                body += `showing first ${MAX_LINES} of ${formattedErrors.length} issues)\n\n```\n`;
+                body += ` (showing first ${MAX_LINES} of ${formattedErrors.length} issues)</summary>\n\n```\n`;
                 body += formattedErrors.slice(0, MAX_LINES).join('\n');
                 body += `\n\n... and ${formattedErrors.length - MAX_LINES} more issues ...`;
               } else {
-                body += `${formattedErrors.length} issues)\n\n```log\n`;
+                body += ` (${formattedErrors.length} issues)</summary>\n\n```\n`;
                 body += formattedErrors.join('\n');
               }
               body += '\n```\n</details>\n\n';
@@ -179,14 +184,14 @@ jobs:
             
             // Add test output
             if (fs.existsSync('jest-junit.xml')) {
-              body += '<details>\n<summary>Test Results</summary>\n\n```xml\n';
+              body += '<details>\n<summary>Test Results</summary>\n\n```\n';
               body += fs.readFileSync('jest-junit.xml', 'utf8');
               body += '\n```\n</details>\n\n';
             }
             
             // Add test coverage details
-            body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
             const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+            body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
             const coverage = JSON.parse(coverageDetails);
             const files = Object.keys(coverage);
             if (files.length > MAX_LINES) {
@@ -204,7 +209,6 @@ jobs:
             body += `🕒 Last updated: ${results.test.timestamp}\n`;
             body += `🔗 [View Run](${results.test.run_url})`;
             
-            // Find existing bot comment
             console.log('Searching for existing bot comment...');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
@@ -218,11 +222,7 @@ jobs:
               comment.body.includes('Test Results')
             );
             
-            console.log('Bot comment found:', botComment ? botComment.id : 'none');
-            
-            // Update or create comment
             if (botComment) {
-              console.log('Updating existing comment...');
               await github.rest.issues.updateComment({
                 comment_id: botComment.id,
                 owner: context.repo.owner,
@@ -230,7 +230,6 @@ jobs:
                 body: body
               });
             } else {
-              console.log('Creating new comment...');
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,

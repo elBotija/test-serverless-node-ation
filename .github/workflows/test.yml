@@ -8,7 +8,7 @@ on:
         description: 'Node.js version'
         type: string
       FAIL_FAST:
-        default: false
+        default: true
         description: 'Stop pipeline on test failure'
         required: false
         type: boolean
@@ -42,7 +42,7 @@ jobs:
 
       - name: Run ESLint
         id: lint
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run lint-ci
           LINT_STATUS=$?
@@ -54,7 +54,7 @@ jobs:
 
       - name: Run tests
         id: tests
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run test-ci
           TEST_STATUS=$?

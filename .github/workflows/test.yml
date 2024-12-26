@@ -144,16 +144,16 @@ jobs:
             }
             
             // Add test output
-if (fs.existsSync('jest-junit.xml')) {
-  body += '<details>\n<summary>Test Results</summary>\n\n```\n';
-  body += fs.readFileSync('jest-junit.xml', 'utf8');
-  body += '\n```\n</details>\n\n';
-}
+            if (fs.existsSync('jest-junit.xml')) {
+              body += '<details>\n<summary>Test Results</summary>\n\n```\n';
+              body += fs.readFileSync('jest-junit.xml', 'utf8');
+              body += '\n```\n</details>\n\n';
+            }
 
-// Add test coverage details
+            // Add test coverage details
             body += '<details>\n<summary>Test Coverage Details</summary>\n\n```\n';
             const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
-body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
+            body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
             body += '\n```\n</details>\n\n';
             
             body += `🕒 Last updated: ${results.test.timestamp}\n`;

@@ -1,6 +1,4 @@
-export const alwaysFails = () => {
-  return 'wrong';
-};
+export const alwaysFails = () => 'wrong';
 
 export const noTestCoverage = () => {
   if (process.env.NODE_ENV === 'production') {

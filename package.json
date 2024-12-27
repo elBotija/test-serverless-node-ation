@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "lint": "eslint ./src",
+    "lint-fix": "eslint ./src --fix",
     "lint-ci": "eslint ./src || eslint ./src -f checkstyle > checkstyle-eslint.xml || echo Linting issues detected",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --watch",
     "test-ci": "CI=true NODE_OPTIONS=--experimental-vm-modules jest --coverage --reporters=default --reporters=jest-junit --runInBand"

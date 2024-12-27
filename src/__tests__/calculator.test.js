@@ -1,4 +1,6 @@
-import { add, subtract, multiply, divide } from '../calculator.js';
+import {
+  add, subtract, multiply, divide,
+} from '../calculator.js';
 
 describe('Calculator', () => {
   test('adds two numbers correctly', () => {

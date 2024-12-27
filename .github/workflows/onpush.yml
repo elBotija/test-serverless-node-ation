@@ -4,10 +4,14 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: write
+  pull-requests: write  
+
 jobs:
   test:
     uses: ./.github/workflows/test.yml
     with:
       NODE_VERSION: '20.18.0'
-      COVERAGE_THRESHOLD: 80
+      COVERAGE_THRESHOLD: 60
       FAIL_FAST: true

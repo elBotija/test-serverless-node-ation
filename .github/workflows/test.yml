@@ -42,23 +42,35 @@ jobs:
 
       - name: Run ESLint
         id: lint
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run lint-ci
-          echo "LINT_STATUS=$?" >> $GITHUB_ENV
-
+          if [ -f "checkstyle-eslint.xml" ]; then
+            ERROR_COUNT=$(grep -c "<error" checkstyle-eslint.xml || true)
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "LINT_STATUS=1" >> $GITHUB_ENV
+              echo "Found $ERROR_COUNT lint errors"
+            else
+              echo "LINT_STATUS=0" >> $GITHUB_ENV
+            fi
+          else
+            echo "LINT_STATUS=0" >> $GITHUB_ENV
+          fi
       - name: Run tests
         id: tests
-        continue-on-error: ${{ !inputs.FAIL_FAST }}
+        continue-on-error: true
         run: |
           npm run test-ci
-          echo "TEST_STATUS=$?" >> $GITHUB_ENV
+          TEST_STATUS=$?
+          echo "TEST_STATUS=$TEST_STATUS" >> $GITHUB_ENV
 
       - name: Process test results
         id: process_results
+        shell: bash
         run: |
           # Extract coverage from jest-junit report
-          COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          # COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+          COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
           # Prepare test summary
@@ -79,15 +91,15 @@ jobs:
           
           # Add Test results
           if [ "$TEST_STATUS" = "0" ]; then
-            echo "| Tests | ✅ | Passed |" >> summary.txt
+            echo "| Tests | ✅ | All tests passed |" >> summary.txt
             TEST_MESSAGE="✅ All tests passed"
           else
-            echo "| Tests | ❌ | Failed |" >> summary.txt
+            echo "| Tests | ❌ | Tests failed |" >> summary.txt
             TEST_MESSAGE="❌ Some tests failed"
           fi
           
           # Add Coverage results
-          if [ "$COVERAGE" -ge "${{ inputs.COVERAGE_THRESHOLD }}" ]; then
+          if (( $(echo "$COVERAGE >= ${{ inputs.COVERAGE_THRESHOLD }}" | bc -l) )); then
             echo "| Coverage | ✅ | ${COVERAGE}% |" >> summary.txt
             COVERAGE_MESSAGE="✅ Coverage meets threshold"
           else
@@ -125,8 +137,9 @@ jobs:
             let results;
             try {
               results = JSON.parse(fs.readFileSync('.github_testresults', 'utf8'));
+              console.log('Test results loaded:', results);
             } catch (error) {
-              console.log('No test results found or invalid JSON');
+              console.log('Error reading test results:', error);
               return;
             }
             
@@ -138,20 +151,59 @@ jobs:
             
             // Add detailed logs
             if (fs.existsSync('checkstyle-eslint.xml')) {
-              body += '<details>\n<summary>ESLint Results</summary>\n\n```xml\n';
-              body += fs.readFileSync('checkstyle-eslint.xml', 'utf8');
+              body += '<details>\n<summary>ESLint Results</summary>\n\n```log\n';
+              const eslintOutput = fs.readFileSync('checkstyle-eslint.xml', 'utf8');
+              
+              // Parse XML to get file nodes
+              const fileMatches = eslintOutput.match(/<file[^>]*>.*?<\/file>/gs) || [];
+              let formattedErrors = '';
+
+              fileMatches.forEach(fileBlock => {
+                const fileNameMatch = fileBlock.match(/name="([^"]+)"/);
+                if (!fileNameMatch) return;
+                
+                const fileName = fileNameMatch[1].split('/').pop(); // Get just the filename
+                const errorMatches = fileBlock.match(/<error[^>]*>/g) || [];
+                
+                if (errorMatches.length > 0) {
+                  formattedErrors += `\n### ${fileName}\n`;
+                  
+                  errorMatches.forEach(error => {
+                    const line = error.match(/line="(\d+)"/)?.[1];
+                    const column = error.match(/column="(\d+)"/)?.[1];
+                    const severity = error.match(/severity="(\w+)"/)?.[1];
+                    const message = error.match(/message="([^"]+)"/)?.[1];
+                    const source = error.match(/source="([^"]+)"/)?.[1];
+                    
+                    if (line && column && severity && message) {
+                      formattedErrors += `${line}:${column} ${severity} ${message} (${source})\n`;
+                    }
+                  });
+                }
+              });
+
+              body += formattedErrors || 'No lint errors found';
+              body += '\n```\n</details>\n\n';
+            }
+            
+            // Add test output
+            if (fs.existsSync('jest-junit.xml')) {
+              body += '<details>\n<summary>Test Results</summary>\n\n```xml\n';
+              body += fs.readFileSync('jest-junit.xml', 'utf8');
               body += '\n```\n</details>\n\n';
             }
             
             // Add test coverage details
-            body += '<details>\n<summary>Test Coverage Details</summary>\n\n```\n';
-            body += fs.readFileSync('coverage/lcov-report/index.html', 'utf8');
+            body += '<details>\n<summary>Test Coverage Details</summary>\n\n```json\n';
+            const coverageDetails = fs.readFileSync('coverage/coverage-summary.json', 'utf8');
+            body += JSON.stringify(JSON.parse(coverageDetails), null, 2);
             body += '\n```\n</details>\n\n';
             
             body += `🕒 Last updated: ${results.test.timestamp}\n`;
             body += `🔗 [View Run](${results.test.run_url})`;
             
             // Find existing bot comment
+            console.log('Searching for existing bot comment...');
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -160,11 +212,15 @@ jobs:
             
             const botComment = comments.data.find(comment => 
               comment.user.type === 'Bot' && 
+              comment.user.login === 'github-actions[bot]' &&
               comment.body.includes('Test Results')
             );
             
+            console.log('Bot comment found:', botComment ? botComment.id : 'none');
+            
             // Update or create comment
             if (botComment) {
+              console.log('Updating existing comment...');
               await github.rest.issues.updateComment({
                 comment_id: botComment.id,
                 owner: context.repo.owner,
@@ -172,6 +228,7 @@ jobs:
                 body: body
               });
             } else {
+              console.log('Creating new comment...');
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
@@ -183,7 +240,7 @@ jobs:
       - name: Check Results
         if: ${{ inputs.FAIL_FAST }}
         run: |
-          if [ "$TEST_STATUS" != "0" ] || [ "$LINT_STATUS" != "0" ] || [ "$COVERAGE" -lt "${{ inputs.COVERAGE_THRESHOLD }}" ]; then
+          if [ "$TEST_STATUS" != "0" ] || [ "$LINT_STATUS" != "0" ] || (( $(echo "$COVERAGE < ${{ inputs.COVERAGE_THRESHOLD }}" | bc -l) )); then
             echo "::error::Checks failed! Cannot proceed."
             exit 1
           fi

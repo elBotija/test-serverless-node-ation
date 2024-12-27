@@ -6,5 +6,9 @@ function badFunction(a, b) { // no space after comma
 
 // unused variables
 const unused = 'unused';
-console.log(foo, unused);
-export default badFunction;
+
+function unusedFunction() {
+  return unused + foo;
+}
+
+export { foo, badFunction, unusedFunction };
